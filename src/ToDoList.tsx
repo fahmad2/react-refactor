@@ -2,22 +2,21 @@ import { DeleteIcon } from "@chakra-ui/icons";
 import {
   Box,
   Button,
-  Center,
   Checkbox,
   Flex,
   FormControl,
-  Heading,
   IconButton,
   Input,
-  List,
   ListItem,
   Spacer,
   Text,
 } from "@chakra-ui/react";
-import { SyntheticEvent, useEffect, useState } from "react";
+import { SyntheticEvent, useEffect, useMemo, useState } from "react";
 
 import { ToDoItem } from "./types/ToDoItem";
-import Table from "./Table";
+import MyTable from "./MyTable";
+import { DataModel } from "./MyTable/types";
+import { TodoListHeadings } from "./constants/constants";
 
 function ToDoList() {
   const [toDoItems, setToDoItems] = useState<ToDoItem[]>([]);
@@ -57,10 +56,7 @@ function ToDoList() {
       const response = await fetch(`http://localhost:3001/items/${id}`, {
         method: "DELETE",
       });
-      setToDoItems((prev) => [
-        ...prev.slice(0, index),
-        ...prev.slice(index + 1),
-      ]);
+      setToDoItems((prev) => prev.filter((item) => item.id != id));
     }
 
     deleteItem();
@@ -71,92 +67,52 @@ function ToDoList() {
       const response = await fetch(`http://localhost:3001/items/${id}/toggle`, {
         method: "PUT",
       });
-      setToDoItems((prev) => [
-        ...prev.slice(0, index),
-        { ...prev[index], completed: !prev[index].completed },
-        ...prev.slice(index + 1),
-      ]);
+
+      setToDoItems((prev) => prev.map((item) => {
+        if(item.id == id) {
+          item.completed = !item.completed;
+        }
+
+        return item;
+      }))
     }
     toggleItem();
   }
 
-  return (
-    <>
-      <Center>
-        <Box p={4} width="640px">
-          <Heading>To-Do List</Heading>
-        </Box>
-      </Center>
+  const dataModel: DataModel<ToDoItem> = (item, index) => (
+    <ListItem key={item.id}>
+        <Flex
+          alignItems="center"
+          bg={index % 2 === 0 ? "gray.100" : "white"}
+        >
+          <Checkbox
+            isChecked={item.completed}
+            onChange={() => handleToggleItem(item.id, index)}
+            width={100}
+            px={6}
+            py={4}
+          />
+          <Text fontSize={16} px={6} py={4}>
+            {item.description}
+          </Text>
+          <Spacer />
+          <Box px={6} py={4}>
+            <IconButton
+              icon={<DeleteIcon />}
+              aria-label="Delete this item"
+              onClick={() => handleDeleteItem(item.id, index)}
+              size="xs"
+              background="gray.600"
+              _hover={{ bg: "red.600" }}
+              color="white"
+            />
+          </Box>
+        </Flex>
+      </ListItem>
+  );
 
-      {/* <Center>
-        <Box width="640px">
-          <Table />
-        </Box>
-      </Center> */}
-      
-      {/* TODO replace the following block with the <Table /> component you create */}
-      <Center alignItems="baseline">
-        <Box width="640px">
-          <List>
-            <ListItem>
-              <Flex alignItems="center" color="gray.600" fontWeight={600}>
-                <Text
-                  fontSize={12}
-                  px={6}
-                  py={3}
-                  textTransform="uppercase"
-                  width={100}
-                >
-                  Done
-                </Text>
-                <Text fontSize={12} px={6} py={3} textTransform="uppercase">
-                  Description
-                </Text>
-                <Text
-                  fontSize={12}
-                  px={6}
-                  py={3}
-                  textTransform="uppercase"
-                ></Text>
-              </Flex>
-            </ListItem>
-            {toDoItems.map((item, index) => (
-              <ListItem key={item.id}>
-                <Flex
-                  alignItems="center"
-                  bg={index % 2 === 0 ? "gray.100" : "white"}
-                >
-                  <Checkbox
-                    isChecked={item.completed}
-                    onChange={() => handleToggleItem(item.id, index)}
-                    width={100}
-                    px={6}
-                    py={4}
-                  />
-                  <Text fontSize={16} px={6} py={4}>
-                    {item.description}
-                  </Text>
-                  <Spacer />
-                  <Box px={6} py={4}>
-                    <IconButton
-                      icon={<DeleteIcon />}
-                      aria-label="Delete this item"
-                      onClick={() => handleDeleteItem(item.id, index)}
-                      size="xs"
-                      background="gray.600"
-                      _hover={{ bg: "red.600" }}
-                      color="white"
-                    />
-                  </Box>
-                </Flex>
-              </ListItem>
-            ))}
-          </List>
-        </Box>
-      </Center>
-
-      <Center>
-        <Box p={4} width="640px" bg="gray.50">
+  const footer = useMemo(() => {
+    return (
           <form onSubmit={handleSubmitNewItem}>
             <Flex>
               <FormControl>
@@ -174,8 +130,18 @@ function ToDoList() {
               </Button>
             </Flex>
           </form>
-        </Box>
-      </Center>
+        );
+  }, [handleSubmitNewItem, setNewItemDescription]);
+
+  return (
+    <>
+      <MyTable 
+        header="To-Do List"
+        headings={TodoListHeadings}
+        data={toDoItems}
+        dataModel={dataModel}
+        footer={footer}
+      />
     </>
   );
 }
